@@ -1,0 +1,403 @@
+---
+import "../styles/global.css";
+---
+
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Comparar imágenes</title>
+  </head>
+  <body>
+    <main class="stage">
+      <figure
+        id="drop-zone"
+        class="diff aspect-16/9 is-empty"
+        tabindex="0"
+        aria-label="Comparador de imágenes. Arrastra dos imágenes para compararlas."
+      >
+        <div class="placeholder" aria-hidden="true">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="1.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect>
+            <circle cx="9" cy="9" r="2"></circle>
+            <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path>
+          </svg>
+          <span>Arrastra imágenes aquí</span>
+        </div>
+
+        <div class="diff-item-1" role="img" tabindex="0">
+          <img id="image-before" alt="Imagen original" draggable="false" />
+        </div>
+        <div class="diff-item-2" role="img">
+          <img id="image-after" alt="Imagen comparada" draggable="false" />
+        </div>
+        <div class="diff-resizer"></div>
+      </figure>
+
+      <div class="controls">
+        <label class="icon-button" title="Añadir imágenes">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M5 12h14"></path>
+            <path d="M12 5v14"></path>
+          </svg>
+          <input
+            id="image-upload"
+            class="sr-only"
+            type="file"
+            accept="image/*"
+            multiple
+            aria-label="Añadir imágenes para comparar"
+          />
+        </label>
+
+        <button
+          id="fullscreen-button"
+          class="icon-button"
+          type="button"
+          title="Pantalla completa"
+          aria-label="Pantalla completa"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+            focusable="false"
+          >
+            <path d="M8 3H5a2 2 0 0 0-2 2v3"></path>
+            <path d="M21 8V5a2 2 0 0 0-2-2h-3"></path>
+            <path d="M3 16v3a2 2 0 0 0 2 2h3"></path>
+            <path d="M16 21h3a2 2 0 0 0 2-2v-3"></path>
+          </svg>
+        </button>
+      </div>
+    </main>
+
+    <script>
+      const input = document.getElementById("image-upload");
+      const before = document.getElementById("image-before");
+      const after = document.getElementById("image-after");
+      const zone = document.getElementById("drop-zone");
+      const fullscreenButton = document.getElementById("fullscreen-button");
+
+      let beforeURL = null;
+      let afterURL = null;
+      let beforeSet = false;
+      let afterSet = false;
+
+      function setBefore(file) {
+        if (!(before instanceof HTMLImageElement)) return;
+        if (beforeURL) URL.revokeObjectURL(beforeURL);
+        beforeURL = URL.createObjectURL(file);
+        before.src = beforeURL;
+        beforeSet = true;
+        zone?.classList.add("has-before");
+      }
+
+      function setAfter(file) {
+        if (!(after instanceof HTMLImageElement)) return;
+        if (afterURL) URL.revokeObjectURL(afterURL);
+        afterURL = URL.createObjectURL(file);
+        after.src = afterURL;
+        afterSet = true;
+        zone?.classList.add("has-after");
+      }
+
+      function applyFiles(files) {
+        const images = files.filter((file) => file.type.startsWith("image/"));
+        if (images.length === 0) return;
+
+        if (images.length >= 2) {
+          setBefore(images[0]);
+          setAfter(images[1]);
+        } else if (!beforeSet) {
+          setBefore(images[0]);
+        } else if (!afterSet) {
+          setAfter(images[0]);
+        } else {
+          setAfter(images[0]);
+        }
+
+        zone?.classList.remove("is-empty");
+      }
+
+      if (input instanceof HTMLInputElement) {
+        input.addEventListener("change", () => {
+          applyFiles(Array.from(input.files ?? []));
+          input.value = "";
+        });
+      }
+
+      const hasFiles = (event) => {
+        const types = event.dataTransfer?.types;
+        if (!types) return false;
+        return Array.from(types).includes("Files");
+      };
+
+      let dragDepth = 0;
+
+      const showDrop = () => zone?.classList.add("is-dropping");
+      const hideDrop = () => zone?.classList.remove("is-dropping");
+
+      window.addEventListener("dragenter", (event) => {
+        if (!hasFiles(event)) return;
+        event.preventDefault();
+        dragDepth += 1;
+        if (dragDepth === 1) showDrop();
+      });
+
+      window.addEventListener("dragover", (event) => {
+        event.preventDefault();
+        if (event.dataTransfer) {
+          event.dataTransfer.dropEffect = "copy";
+        }
+        if (hasFiles(event) && dragDepth === 0) {
+          dragDepth = 1;
+          showDrop();
+        }
+      });
+
+      window.addEventListener("dragleave", (event) => {
+        if (dragDepth === 0) return;
+        dragDepth -= 1;
+        if (dragDepth <= 0) {
+          dragDepth = 0;
+          hideDrop();
+        }
+      });
+
+      window.addEventListener("drop", (event) => {
+        event.preventDefault();
+        dragDepth = 0;
+        hideDrop();
+        if (hasFiles(event)) {
+          applyFiles(Array.from(event.dataTransfer?.files ?? []));
+        }
+      });
+
+      window.addEventListener("dragend", () => {
+        dragDepth = 0;
+        hideDrop();
+      });
+
+      if (fullscreenButton instanceof HTMLButtonElement) {
+        fullscreenButton.addEventListener("click", () => {
+          if (document.fullscreenElement) {
+            document.exitFullscreen?.();
+            return;
+          }
+
+          const request = zone?.requestFullscreen?.();
+          if (request && typeof request.catch === "function") {
+            request.catch(() => {});
+          }
+        });
+      }
+
+      document.addEventListener("fullscreenchange", () => {
+        const active = document.fullscreenElement === zone;
+        const label = active ? "Salir de pantalla completa" : "Pantalla completa";
+        fullscreenButton?.setAttribute("aria-label", label);
+        fullscreenButton?.setAttribute("title", label);
+      });
+    </script>
+
+    <style>
+      .stage {
+        min-height: 100svh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        padding: 24px;
+      }
+
+      #drop-zone {
+        width: min(100%, 1500px, calc((100svh - 120px) * 16 / 9));
+        margin: 0;
+        border-radius: 16px;
+        overflow: hidden;
+        background: #ececef;
+        box-shadow:
+          0 30px 60px -30px rgba(0, 0, 0, 0.45),
+          0 0 0 0.5px rgba(0, 0, 0, 0.08);
+        transition:
+          box-shadow 0.18s ease,
+          transform 0.18s ease;
+      }
+
+      #drop-zone:not(.has-before) .diff-item-1,
+      #drop-zone:not(.has-after) .diff-item-2 {
+        visibility: hidden;
+      }
+
+      #drop-zone:not(.has-before) .diff-resizer,
+      #drop-zone:not(.has-after) .diff-resizer {
+        display: none;
+      }
+
+      #drop-zone.is-dropping {
+        transform: scale(1.004);
+        box-shadow:
+          0 0 0 2.5px rgba(0, 122, 255, 0.65),
+          0 30px 60px -30px rgba(0, 0, 0, 0.45);
+      }
+
+      #drop-zone:fullscreen {
+        width: 100vw;
+        height: 100vh;
+        max-width: none;
+        max-height: none;
+        aspect-ratio: auto;
+        border-radius: 0;
+        background: #000;
+        box-shadow: none;
+      }
+
+      .placeholder {
+        position: absolute;
+        inset: 0;
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        color: #86868b;
+        pointer-events: none;
+      }
+
+      #drop-zone.is-empty .placeholder {
+        display: flex;
+      }
+
+      .placeholder svg {
+        width: 40px;
+        height: 40px;
+        opacity: 0.85;
+      }
+
+      .placeholder span {
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: 0.01em;
+      }
+
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .icon-button {
+        position: relative;
+        display: grid;
+        place-items: center;
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        border-radius: 999px;
+        color: #1d1d1f;
+        background: rgba(255, 255, 255, 0.72);
+        border: 0.5px solid rgba(0, 0, 0, 0.1);
+        box-shadow:
+          0 1px 1px rgba(0, 0, 0, 0.04),
+          0 8px 20px -8px rgba(0, 0, 0, 0.25);
+        backdrop-filter: blur(24px) saturate(180%);
+        -webkit-backdrop-filter: blur(24px) saturate(180%);
+        cursor: pointer;
+        -webkit-tap-highlight-color: transparent;
+        transition:
+          background 0.18s ease,
+          transform 0.12s ease;
+      }
+
+      .icon-button:hover {
+        background: rgba(255, 255, 255, 0.9);
+      }
+
+      .icon-button:active {
+        transform: scale(0.94);
+      }
+
+      .icon-button svg {
+        pointer-events: none;
+      }
+
+      .icon-button:has(input:focus-visible),
+      .icon-button:focus-visible {
+        outline: 3px solid rgba(0, 122, 255, 0.55);
+        outline-offset: 2px;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        #drop-zone {
+          background: #232326;
+          box-shadow:
+            0 30px 60px -25px rgba(0, 0, 0, 0.8),
+            0 0 0 0.5px rgba(255, 255, 255, 0.08);
+        }
+
+        #drop-zone.is-dropping {
+          box-shadow:
+            0 0 0 2.5px rgba(10, 132, 255, 0.75),
+            0 30px 60px -25px rgba(0, 0, 0, 0.8);
+        }
+
+        .placeholder {
+          color: #98989d;
+        }
+
+        .icon-button {
+          color: #f5f5f7;
+          background: rgba(58, 58, 60, 0.66);
+          border-color: rgba(255, 255, 255, 0.12);
+          box-shadow:
+            0 1px 1px rgba(0, 0, 0, 0.2),
+            0 8px 20px -8px rgba(0, 0, 0, 0.6);
+        }
+
+        .icon-button:hover {
+          background: rgba(72, 72, 74, 0.8);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #drop-zone,
+        .icon-button {
+          transition: none;
+        }
+
+        .icon-button:active {
+          transform: none;
+        }
+      }
+    </style>
+  </body>
+</html>

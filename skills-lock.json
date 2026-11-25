@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "skills": {
+    "macos-app-design": {
+      "source": "petekp/agent-skills",
+      "commit": "0f90f074fd018ffbd7fab9d96d65fee23d44295d",
+      "sourceType": "github",
+      "skillPath": "skills/macos-app-design/SKILL.md",
+      "computedHash": "a2fa7fad9056d1f5f2b8b76e48018d75637b1f455ffb7ae1a7d9bb5992afd993"
+    },
+    "macos-design-guidelines": {
+      "source": "ehmo/platform-design-skills",
+      "commit": "dc2be825d8b439caea78e9eaa8fb3ac23b0ff3e9",
+      "sourceType": "github",
+      "skillPath": "skills/macos/SKILL.md",
+      "computedHash": "d5ad3e4541b2810e3ce01c85ed442bcb9458d585c46293b273fd03d616c91abc"
+    }
+  }
+}
